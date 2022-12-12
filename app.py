@@ -1,5 +1,8 @@
+from datetime import datetime
+
 import streamlit as st
 import numpy as np
+from tqdm import tqdm
 import models
 import active_learning
 
@@ -20,6 +23,9 @@ if "success_learning" not in st.session_state:  # Для вывода скачи
 if "clf" not in st.session_state:  # Для скачивания отчёта
     st.session_state.clf = None
 
+if "iter_learning" not in st.session_state:  # Для progress bar
+    st.session_state.iter_learning = 0
+
 success_input_params = False  # Для уведомления о загрузке параметров
 success_input_model_and_params = False  # Для вывода сообщений о параметрах и модели
 success_learning = False  # Для уведомления об окончании обучения
@@ -31,8 +37,10 @@ success_func_model = True  # В модели нет ошибок
 success_data_params = (
     True  # Переданные значения являются числами (могут быть конвертированы в числа)
 )
+type_er = None  # type of error
 
 model = None
+maxiter = 10  # number of iterations
 
 with header:
     st.title("Welcome!")
@@ -142,16 +150,33 @@ with body:
         st.session_state.start_learning = True
     if st.session_state.start_learning:
         if success_input_model_and_params and start_flag:
-            with st.spinner("Подождите, идёт расчёт..."):
-                clf = active_learning.ActiveLearning()
-                clf.learning(
-                    model=model,
-                    bounds_a=inp_bounds_a,
-                    bounds_b=inp_bounds_b,
-                    maxiter=10,
-                )
-                st.session_state.clf = clf
-                st.session_state.success_learning = True
+            clf = active_learning.ActiveLearning()
+
+            start_t = str(datetime.now()).split()
+            start_time = (start_t[1][:8], start_t[0])
+
+            clf.initialize(model=model, bounds_a=inp_bounds_a, bounds_b=inp_bounds_b)
+
+            my_bar = st.progress(0)
+
+            for iteration in tqdm(range(maxiter)):
+                iter_learning = iteration / maxiter
+                my_bar.progress(iter_learning)
+                clf.step()
+
+            st.session_state.iter_learning = 1
+            my_bar.progress(st.session_state.iter_learning)
+
+            # Запись времени окончания расчёта
+            end_t = str(datetime.now()).split()
+            end_time = (end_t[1][:8], end_t[0])
+
+            clf.start_time = start_time
+            clf.end_time = end_time
+
+            st.session_state.clf = clf
+            st.session_state.success_learning = True
+
         elif start_flag:
             st.error(
                 """Вы не можете начать расчёт, пока не выбрана модель и

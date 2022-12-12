@@ -52,8 +52,22 @@ class ActiveLearning:
         self.start_time = None  # time of start learning
         self.end_time = None  # time of end learning
 
-    def __initialize(self, model, bounds_a, bounds_b, n_init=100):
+    def initialize(self, model, bounds_a, bounds_b, n_init=100):
 
+        """
+        Функция обновляет параметры модели к моменту до начала обучения.
+
+        Args:
+            model (func): Имитационная модель объекта со встроенным замером, например, провоимости.
+
+            bounds_a (list or ndarray of shape (n_obj_params, 2)): Массив с диапазонами объектных
+            параметров для альфа-режимов.
+
+            bounds_b (list or ndarray of shape (n_obj_params, 2)): Массив с диапазонами объектных
+            параметров для бета-режимов.
+
+            n_init (int): Количество сгенерированных до обучения режимов каждого класса
+        """
         self.model_of_object = model
         self.bounds_a = bounds_a
         self.bounds_b = bounds_b
@@ -332,6 +346,121 @@ class ActiveLearning:
 
         return scaler.inverse_transform(result)
 
+    def step(
+        self,
+        n_for_sample=100,
+        n_samples=5,
+        radius=0.02,
+        ab_start=80,
+    ):
+        """
+        Функция обучения классификатора по принципу активного обучения. Выполняется один шаг обучения.
+
+        Args:
+            n_for_sample (int), default=100: Количество точек, от которых происходит сэмплирование.
+
+            n_samples (int), default=5: Количество мэплируемых точек.
+
+            radius (float), default=0.02: Минимальное расстояние до ближайших точек
+            в прореженном массиве.
+
+            ab_start (int or float), default=80: Нерасчётный параметр.
+            Его повышение уменьшает дисперсию.
+        """
+        start_t = str(datetime.now()).split()
+        start_time = (start_t[1][:8], start_t[0])
+        self.start_time = start_time
+
+        s_r = []
+
+        x_a = self.x_a
+        x_b = self.x_b
+        v_a = self.v_a
+        v_b = self.v_b
+
+        scaler_a = self.scaler_a
+        scaler_b = self.scaler_b
+
+        model = self.model
+        clf = self.clf
+
+        s_r.append(x_a[:, 0].sum())
+
+        ab = ab_start
+
+        cond = clf.predict(v_a) != 0
+        v_a = v_a[~cond]
+        x_a = x_a[~cond]
+
+        x_a, v_a = self.__selection(x_a, v_a, radius=radius)
+        try:
+            proba_a = clf.decision_function(v_a)
+        except AttributeError:
+            proba_a = clf.predict_proba(v_a)[:, 1]
+
+        proba_a = MinMaxScaler().fit_transform(proba_a[:, None]).flatten()
+        proba_a += (
+            self.__get_scores_dist(v_a) * 0.3
+        )  # максимальные альфы ближе к границе, поэтому прибавляем
+        best_a = np.argsort(-proba_a)[: n_for_sample * 1]
+        best_a = np.random.choice(best_a, size=n_for_sample)
+
+        x_to_sample_a = x_a[best_a]
+        x_sampled_a = self.__sample_dots(x_to_sample_a, scaler_a, n=n_samples, ab=ab)
+        v_sampled_a = model(x_sampled_a)
+
+        x_a = np.r_[x_a, x_sampled_a]
+        v_a = np.r_[v_a, v_sampled_a]
+
+        #####
+
+        x_b, v_b = self.__selection(x_b, v_b, radius=radius)
+        try:
+            proba_b = clf.decision_function(v_b)
+        except AttributeError:
+            proba_b = clf.predict_proba(v_b)[:, 1]
+
+        proba_b = MinMaxScaler().fit_transform(proba_b[:, None]).flatten()
+        proba_b -= (
+            self.__get_scores_dist(v_b) * 0.3
+        )  # минимальные беты ближе к границе, поэтому вычитаем
+        best_b = np.argsort(-proba_b)[-n_for_sample * 1 :]
+        best_b = np.random.choice(best_b, size=n_for_sample)
+
+        x_to_sample_b = x_b[best_b]
+        x_sampled_b = self.__sample_dots(x_to_sample_b, scaler_b, n=n_samples, ab=ab)
+        v_sampled_b = model(x_sampled_b)
+
+        x_b = np.r_[x_b, x_sampled_b]
+        v_b = np.r_[v_b, v_sampled_b]
+
+        v, y = self.__make_dataset(v_b, v_a)
+        clf, _ = self.__get_selective_clf(clf, v, y)
+
+        cond = clf.predict(v_a) != 0
+        v_a = v_a[~cond]
+        x_a = x_a[~cond]
+
+        x_a, v_a = self.__selection(x_a, v_a, radius=radius)
+        x_b, v_b = self.__selection(x_b, v_b, radius=radius)
+
+        #####
+
+        self.clf = clf
+        self.coef = clf[-1].coef_
+        self.intercept = clf[-1].intercept_
+
+        self.x_a = x_a
+        self.x_b = x_b
+        self.v_a = v_a
+        self.v_b = v_b
+        self.s_r = s_r
+
+        # Запись времени окончания расчёта
+        end_t = str(datetime.now()).split()
+        end_time = (end_t[1][:8], end_t[0])
+        self.end_time = end_time
+
     def learning(
         self,
         model,
@@ -362,7 +491,7 @@ class ActiveLearning:
             radius (float), default=0.02: Минимальное расстояние до ближайших точек
             в прореженном массиве.
 
-            ab_start (int or float), default=10: Нерасчётный параметр.
+            ab_start (int or float), default=80: Нерасчётный параметр.
             Его повышение уменьшает дисперсию.
 
             maxiter (int), default=200: Максимальное количество итераций.
@@ -370,102 +499,22 @@ class ActiveLearning:
         # Запись времени загрузки данных
         start_t = str(datetime.now()).split()
         start_time = (start_t[1][:8], start_t[0])
-        self.start_time = start_time
 
-        self.__initialize(model, bounds_a, bounds_b)
+        self.initialize(model, bounds_a, bounds_b)
 
-        s_r = []
-
-        x_a = self.x_a
-        x_b = self.x_b
-        v_a = self.v_a
-        v_b = self.v_b
-
-        scaler_a = self.scaler_a
-        scaler_b = self.scaler_b
-
-        model = self.model
-        clf = self.clf
-
-        for _ in tqdm(range(maxiter + 1)):
-
-            s_r.append(x_a[:, 0].sum())
-
-            ab = ab_start
-
-            cond = clf.predict(v_a) != 0
-            v_a = v_a[~cond]
-            x_a = x_a[~cond]
-
-            x_a, v_a = self.__selection(x_a, v_a, radius=radius)
-            try:
-                proba_a = clf.decision_function(v_a)
-            except AttributeError:
-                proba_a = clf.predict_proba(v_a)[:, 1]
-
-            proba_a = MinMaxScaler().fit_transform(proba_a[:, None]).flatten()
-            proba_a += (
-                self.__get_scores_dist(v_a) * 0.3
-            )  # максимальные альфы ближе к границе, поэтому прибавляем
-            best_a = np.argsort(-proba_a)[: n_for_sample * 1]
-            best_a = np.random.choice(best_a, size=n_for_sample)
-
-            x_to_sample_a = x_a[best_a]
-            x_sampled_a = self.__sample_dots(
-                x_to_sample_a, scaler_a, n=n_samples, ab=ab
+        for _ in tqdm(range(maxiter)):
+            self.step(
+                n_for_sample=n_for_sample,
+                n_samples=n_samples,
+                radius=radius,
+                ab_start=ab_start,
             )
-            v_sampled_a = model(x_sampled_a)
-
-            x_a = np.r_[x_a, x_sampled_a]
-            v_a = np.r_[v_a, v_sampled_a]
-
-            #####
-
-            x_b, v_b = self.__selection(x_b, v_b, radius=radius)
-            try:
-                proba_b = clf.decision_function(v_b)
-            except AttributeError:
-                proba_b = clf.predict_proba(v_b)[:, 1]
-
-            proba_b = MinMaxScaler().fit_transform(proba_b[:, None]).flatten()
-            proba_b -= (
-                self.__get_scores_dist(v_b) * 0.3
-            )  # минимальные беты ближе к границе, поэтому вычитаем
-            best_b = np.argsort(-proba_b)[-n_for_sample * 1 :]
-            best_b = np.random.choice(best_b, size=n_for_sample)
-
-            x_to_sample_b = x_b[best_b]
-            x_sampled_b = self.__sample_dots(
-                x_to_sample_b, scaler_b, n=n_samples, ab=ab
-            )
-            v_sampled_b = model(x_sampled_b)
-
-            x_b = np.r_[x_b, x_sampled_b]
-            v_b = np.r_[v_b, v_sampled_b]
-
-            v, y = self.__make_dataset(v_b, v_a)
-            clf, _ = self.__get_selective_clf(clf, v, y)
-
-            cond = clf.predict(v_a) != 0
-            v_a = v_a[~cond]
-            x_a = x_a[~cond]
-
-            x_a, v_a = self.__selection(x_a, v_a, radius=radius)
-            x_b, v_b = self.__selection(x_b, v_b, radius=radius)
-
-        self.clf = clf
-        self.coef = clf[-1].coef_
-        self.intercept = clf[-1].intercept_
-
-        self.x_a = x_a
-        self.x_b = x_b
-        self.v_a = v_a
-        self.v_b = v_b
-        self.s_r = s_r
 
         # Запись времени окончания расчёта
         end_t = str(datetime.now()).split()
         end_time = (end_t[1][:8], end_t[0])
+
+        self.start_time = start_time
         self.end_time = end_time
 
     def plot_clf(self, clf=None, ranges=None, ax=None, scaler=lambda x: x):
@@ -612,7 +661,7 @@ class ActiveLearning:
             report += f"{line}\n"
         report += "\n"
 
-        report += f"Время загрузки данных: {start_time[0]}, {start_time[1]}\n"
+        report += f"Время начала: {start_time[0]}, {start_time[1]}\n"
         report += f"Время окончания расчёта: {end_time[0]}, {end_time[1]}\n"
         report += "\n"
 
