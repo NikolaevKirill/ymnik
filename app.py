@@ -3,8 +3,10 @@ from datetime import datetime
 import streamlit as st
 import numpy as np
 from tqdm import tqdm
-import models
-import active_learning
+from models.model1 import model as model1
+from models.model2 import model as model2
+
+import utils.active_learning as active_learning
 
 header = st.container()
 inputs = st.container()
@@ -53,15 +55,40 @@ with header:
             "Информация в справке.",
             icon="ℹ️",
         )
+        choose_model_download = st.selectbox(
+            "Выбрать пример модели:", options=["Модель1", "Модель2"]
+        )
+        if choose_model_download == "Модель1":
+            with open("models/model1.py", "rb") as file:
+                st.download_button(
+                    label="Скачать пример модели",
+                    data=file,
+                    file_name="example_of_model1.py",
+                    mime="application/octet-stream",
+                )
+        else:
+            with open("models/model2.py", "rb") as file:
+                st.download_button(
+                    label="Скачать пример модели",
+                    data=file,
+                    file_name="example_of_model2.py",
+                    mime="application/octet-stream",
+                )
+        with open("models/params.txt", "rb") as file:
+            st.download_button(
+                label="Скачать пример диапазонов объектных параметров модели",
+                data=file,
+                file_name="example_of_params.txt",
+            )
 
 with inputs:
     choose_model = st.selectbox(
         "Выбрать модель:", options=["Модель1", "Модель2", "Загрузить модель"]
     )
     if choose_model == "Модель1":
-        model = models.model1
+        model = model1
     elif choose_model == "Модель2":
-        model = models.model2
+        model = model2
     else:
         input_model = st.file_uploader("Загрузить модель:", type=["py"])
         if input_model is not None:
