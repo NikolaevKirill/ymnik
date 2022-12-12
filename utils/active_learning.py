@@ -661,7 +661,7 @@ class ActiveLearning:
             report += f"{line}\n"
         report += "\n"
 
-        report += f"Время начала: {start_time[0]}, {start_time[1]}\n"
+        report += f"Время начала расчёта: {start_time[0]}, {start_time[1]}\n"
         report += f"Время окончания расчёта: {end_time[0]}, {end_time[1]}\n"
         report += "\n"
 
