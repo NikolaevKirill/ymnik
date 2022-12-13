@@ -80,6 +80,7 @@ with header:
                 data=file,
                 file_name="example_of_params.txt",
             )
+        st.markdown("""---""")
 
 with inputs:
     choose_model = st.selectbox(
