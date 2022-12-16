@@ -47,7 +47,7 @@ class ActiveLearning:
         self.pf_degree = 4  # degree of polinomial features
         self.coef = None  # coefficients of logreg
         self.intercept = None  # intercept
-        self.s_r = None  # resistance of alpha-modes during learning
+        self.s_r = []  # resistance of alpha-modes during learning
 
         self.start_time = None  # time of start learning
         self.end_time = None  # time of end learning
@@ -371,7 +371,7 @@ class ActiveLearning:
         start_time = (start_t[1][:8], start_t[0])
         self.start_time = start_time
 
-        s_r = []
+        s_r = self.s_r
 
         x_a = self.x_a
         x_b = self.x_b
