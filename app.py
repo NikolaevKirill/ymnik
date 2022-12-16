@@ -42,7 +42,7 @@ success_data_params = (
 type_er = None  # type of error
 
 model = None
-maxiter = 10  # number of iterations
+maxiter = 4  # number of iterations
 
 with header:
     st.title("Welcome!")
@@ -186,6 +186,7 @@ with body:
             clf.initialize(model=model, bounds_a=inp_bounds_a, bounds_b=inp_bounds_b)
 
             my_bar = st.progress(0)
+            st.button("Остановить расчёт")
 
             for iteration in tqdm(range(maxiter)):
                 iter_learning = iteration / maxiter
