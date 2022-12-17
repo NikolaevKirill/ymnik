@@ -28,6 +28,9 @@ if "clf" not in st.session_state:  # Для скачивания отчёта
 if "iter_learning" not in st.session_state:  # Для progress bar
     st.session_state.iter_learning = 0
 
+if "success_stop_criterion" not in st.session_state:  # flag of stop learning
+    st.session_state.success_stop_criterion = False
+
 success_input_params = False  # Для уведомления о загрузке параметров
 success_input_model_and_params = False  # Для вывода сообщений о параметрах и модели
 success_learning = False  # Для уведомления об окончании обучения
@@ -42,7 +45,10 @@ success_data_params = (
 type_er = None  # type of error
 
 model = None
-maxiter = 4  # number of iterations
+maxiter = 50  # number of iterations
+window_shape = 10  # shape mooving window for stop ctiterion
+threshold = 0.5  # threshold of difference resistance of alpha-modes for stop learning,
+#  in percentage
 
 with header:
     st.title("Welcome!")
@@ -175,7 +181,9 @@ with body:
     start_flag = st.button("Начать расчёт")
     if start_flag:
         st.session_state.success_learning = False
+        st.session_state.success_stop_criterion = False
         st.session_state.start_learning = True
+        my_bar = st.progress(0)
     if st.session_state.start_learning:
         if success_input_model_and_params and start_flag:
             clf = active_learning.ActiveLearning()
@@ -184,14 +192,26 @@ with body:
             start_time = (start_t[1][:8], start_t[0])
 
             clf.initialize(model=model, bounds_a=inp_bounds_a, bounds_b=inp_bounds_b)
+            st.button(
+                "Остановить расчёт", disabled=st.session_state.success_stop_criterion
+            )
 
-            my_bar = st.progress(0)
-            st.button("Остановить расчёт")
-
-            for iteration in tqdm(range(maxiter)):
+            for iteration in tqdm(range(int(maxiter / 2))):
                 iter_learning = iteration / maxiter
                 my_bar.progress(iter_learning)
                 clf.step()
+
+            for iteration in tqdm(range(int(maxiter / 2), maxiter)):
+                iter_learning = iteration / maxiter
+                my_bar.progress(iter_learning)
+                clf.step()
+                if (iteration - maxiter / 2) >= window_shape:
+                    s_r = np.array(clf.s_r)[-(window_shape + 1) :]
+                    relative_diff = np.abs(np.diff(s_r)) / s_r[:-1] * 100
+                    print(relative_diff)
+                    if np.sum(relative_diff < threshold) == window_shape:
+                        st.session_state.success_stop_criterion = True
+                        break
 
             st.session_state.iter_learning = 1
             my_bar.progress(st.session_state.iter_learning)
@@ -217,6 +237,12 @@ with body:
                 "Обучение закончено. Можете сформировать конфигурационный файл.",
                 icon="✅",
             )
+            if not st.session_state.success_stop_criterion:
+                st.info(
+                    """Обучение завершено, но требуется дополнительная проверка 
+                    селективности алгоритма.""",
+                    icon="ℹ️",
+                )
         if st.session_state.success_learning:
             st.download_button(
                 label="Сформировать конфигурационный файл",
