@@ -45,7 +45,7 @@ success_data_params = (
 type_er = None  # type of error
 
 model = None
-maxiter = 50  # number of iterations
+maxiter = 200  # number of iterations
 window_shape = 10  # shape mooving window for stop ctiterion
 threshold = 0.5  # threshold of difference resistance of alpha-modes for stop learning,
 #  in percentage
@@ -109,9 +109,11 @@ with inputs:
         except ValueError:
             success_data_params = False
         if success_data_params:
-            if inp_bounds.shape[0] % 2 != 0:
+            if (inp_bounds.shape[0] % 2 != 0) or np.any(
+                inp_bounds.T[0] > inp_bounds.T[1]
+            ):
                 success_params = False  # Количество объектных параметров
-                # альфа- и бета-режимов отличаются
+                # альфа- и бета-режимов отличаются или границы указаны не по возрастанию
             else:
                 inp_bounds_a = inp_bounds[: int(len(inp_bounds) / 2)]
                 inp_bounds_b = inp_bounds[int(len(inp_bounds) / 2) :]
