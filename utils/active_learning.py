@@ -85,10 +85,16 @@ class ActiveLearning:
         self.x_a = x_a
         self.x_b = x_b
 
-        v_b = model(x_b)
-
-        self.scaler_model.fit(v_b)
-        self.model = lambda x: self.scaler_model.transform(self.model_of_object(x))
+        try:
+            v_b = model(x_b)
+            self.scaler_model.fit(v_b)
+            self.model = lambda x: self.scaler_model.transform(self.model_of_object(x))
+        except ValueError:
+            v_b = np.array([model(vec_params)[0] for vec_params in x_b])
+            self.scaler_model.fit(v_b)
+            self.model = lambda x: self.scaler_model.transform(
+                np.array([model(vec_params)[0] for vec_params in x])
+            )
 
         v_a = self.model(x_a)
         v_b = self.model(x_b)
