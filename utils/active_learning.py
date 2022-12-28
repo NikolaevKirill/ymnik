@@ -1,25 +1,20 @@
 from datetime import datetime
 
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import (
-    PolynomialFeatures,
-    StandardScaler,
-    MinMaxScaler,
-)
-from sklearn.pipeline import Pipeline
-from sklearn.metrics import precision_score, recall_score
-
-import numpy as np
 import matplotlib.pyplot as plt
-
+import numpy as np
 from scipy import stats
 from scipy.spatial import cKDTree
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import precision_score, recall_score
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import MinMaxScaler, PolynomialFeatures, StandardScaler
 from tqdm import tqdm
 
 
 class ActiveLearning:
     """
-    Класс, для обучения классификатора режимов работы объекта с помощью активного обучения.
+    Класс, для обучения классификатора режимов работы объекта
+    с помощью активного обучения.
     """
 
     def __init__(self):
@@ -58,15 +53,17 @@ class ActiveLearning:
         Функция обновляет параметры модели к моменту до начала обучения.
 
         Args:
-            model (func): Имитационная модель объекта со встроенным замером, например, провоимости.
+            model (func): Имитационная модель объекта со встроенным замером,
+            например, провоимости.
 
-            bounds_a (list or ndarray of shape (n_obj_params, 2)): Массив с диапазонами объектных
-            параметров для альфа-режимов.
+            bounds_a (list or ndarray of shape (n_obj_params, 2)): Массив с
+            диапазонами объектных параметров для альфа-режимов.
 
-            bounds_b (list or ndarray of shape (n_obj_params, 2)): Массив с диапазонами объектных
-            параметров для бета-режимов.
+            bounds_b (list or ndarray of shape (n_obj_params, 2)): Массив с
+            диапазонами объектных параметров для бета-режимов.
 
-            n_init (int): Количество сгенерированных до обучения режимов каждого класса
+            n_init (int): Количество сгенерированных до обучения режимов
+            каждого класса
         """
         self.model_of_object = model
         self.bounds_a = bounds_a
@@ -133,15 +130,18 @@ class ActiveLearning:
         Функция формирует датасет и метки классов для обучения модели.
 
         Args:
-            Xb (ndarray of shape (n_samples_b, n_features)): массив, содержащий величины,
-            используемые в качестве признаков, соответсвующих бета-режимам.
+            Xb (ndarray of shape (n_samples_b, n_features)): массив,
+            содержащий величины, используемые в качестве признаков,
+            соответсвующих бета-режимам.
 
-            Xa (ndarray of shape (n_samples_a, n_features)): массив, содержащий величины,
-            используемые в качестве признаков, соответсвующих альфа-режимам.
+            Xa (ndarray of shape (n_samples_a, n_features)): массив,
+            содержащий величины, используемые в качестве признаков,
+            соответсвующих альфа-режимам.
 
         Returns:
-            X (ndarray of shape (n_samples_b+n_samples_a, n_features)): массив, содержащий величины,
-            используемые в качестве признаков для обучения модели.
+            X (ndarray of shape (n_samples_b+n_samples_a, n_features)):
+            массив, содержащий величины, используемые в качестве признаков
+            для обучения модели.
 
             y (ndarray of shape (n_samples_b+n_samples_a,)): массив,
             содержащий метки классов для соответствующих объектов.
@@ -154,24 +154,29 @@ class ActiveLearning:
 
     def __get_selective_clf(self, clf, x, y, max_iter=10):
         """
-        Функция подбирает вес класса бета-режимов таким образом, чтобы выполнялось
-        условие селективности: все бета-режимы (положительный класс) классифицируются верно.
+        Функция подбирает вес класса бета-режимов таким образом, чтобы
+        выполнялось условие селективности: все бета-режимы (положительный
+        класс) классифицируются верно.
 
         Args:
-            clf (class sklearn.linear_model.LogisticRegression): предварительно обученный
-            классификатор, для которого необходимо подобрать вес положительного класса.
+            clf (class sklearn.linear_model.LogisticRegression):
+            предварительно обученный классификатор, для которого необходимо
+            подобрать вес положительного класса.
 
-            X (ndarray of shape (n_samples, n_features)): массив с признаками объектов для обучения.
+            X (ndarray of shape (n_samples, n_features)): массив с признаками
+            объектов для обучения.
 
             y (n_samples,): массив с метками классов объектов для обучения.
 
-            max_iter (int), default=10: количество попыток уточнения веса положительного класса.
+            max_iter (int), default=10: количество попыток уточнения веса
+            положительного класса.
 
         Returns:
-            clf (class sklearn.linear_model.LogisticRegression): обученный классификатор,
-            с подобранным весом положительного класса.
+            clf (class sklearn.linear_model.LogisticRegression): обученный
+            классификатор, с подобранным весом положительного класса.
 
-            i (int): индекс минимального подходящего веса из списка [0.1, 1, 2, 5, 10]
+            i (int): индекс минимального подходящего веса из списка
+            [0.1, 1, 2, 5, 10]
         """
         class_weights = [0.1, 1, 2, 5, 10]
 
@@ -214,13 +219,15 @@ class ActiveLearning:
         Функция возвращает точки, оставшиеся после прореживания.
 
         Args:
-            points (ndarray of shape(n_samples, n_obj_params)): Точки, которые необходимо проредить.
+            points (ndarray of shape(n_samples, n_obj_params)): Точки,
+            которые необходимо проредить.
 
-            radius (float): Минимальное расстояние до ближайших точек в прореженном массиве.
+            radius (float): Минимальное расстояние до ближайших точек
+            в прореженном массиве.
 
         Returns:
-            ind_of_point (ndarray of shape(n_samples_selected, )): Массив индексов точек,
-            которые остались после прореживания.
+            ind_of_point (ndarray of shape(n_samples_selected, )): Массив
+            индексов точек, которые остались после прореживания.
         """
         # Массив points преобразуется в индексированный массив (N,3)
         ind_points = np.arange(0, len(points), 1)
@@ -230,7 +237,8 @@ class ActiveLearning:
         len_p = len(points)
         ind_of_point = points[0, 0]
         while len_p != 0:
-            point = points[0, 1:]  # текущая точка, вокруг которой все удаляется
+            point = points[0, 1:]  # текущая точка,
+            # вокруг которой все удаляется
             ind_of_point = np.hstack((ind_of_point, points[0, 0]))
             tree = cKDTree(points[:, 1:])  # формирование дерева
             results = tree.query_ball_point(
@@ -243,24 +251,25 @@ class ActiveLearning:
 
     def __selection(self, param, x, radius=1.6):
         """
-        Функция возвращает прореженную область точек, подаваемых на вход функции.
+        Функция возвращает прореженную область точек,
+        подаваемых на вход функции.
 
         Args:
-            param (ndarray of shape(n_samples, n_obj_params)): Объектные параметры точек,
-            которые необходимо проредить.
+            param (ndarray of shape(n_samples, n_obj_params)): Объектные
+            параметры точек, которые необходимо проредить.
 
-            X (ndarray of shape(n_samples, n_features)): Наблюдаемые параметры точек,
-            которые необходимо проредить.
+            X (ndarray of shape(n_samples, n_features)): Наблюдаемые параметры
+            точек, которые необходимо проредить.
 
-            radius (float), default=1.6: Минимальное расстояние до ближайших точек
-            в прореженном массиве.
+            radius (float), default=1.6: Минимальное расстояние до ближайших
+            точек в прореженном массиве.
 
         Returns:
-            param (ndarray of shape(n_param_n_samples_selected, n_obj_params)): Объектные параметры
-            точек, которые подверглись прореживанию.
+            param (ndarray of shape(n_param_n_samples_selected, n_obj_params)):
+            Объектные параметры точек, которые подверглись прореживанию.
 
-            X (ndarray of shape(n_param_n_samples_selected, n_features)): Наблюдаемые параметры
-            точек, которые подверглись прореживанию.
+            X (ndarray of shape(n_param_n_samples_selected, n_features)):
+            Наблюдаемые параметры точек, которые подверглись прореживанию.
         """
         ind_dec = np.intp(self.__decimation(x, radius))
         x = x[ind_dec, :]
@@ -274,14 +283,15 @@ class ActiveLearning:
         до его "ближайшего соседа".
 
         Args:
-            X (ndarray of shape (n_samples, n_features)): массив с признаками для обучения.
+            X (ndarray of shape (n_samples, n_features)): массив с признаками
+            для обучения.
 
-            k (int), default=2: Количество ближайших соседей, до которых рассчитывается расстояние,
-            плюс сама точка (расстояние до неё 0).
+            k (int), default=2: Количество ближайших соседей, до которых
+            рассчитывается расстояние, плюс сама точка (расстояние до неё 0).
 
         Returns:
-            result (ndarray of shape(n_samples,)): массив с отмасштабированным расстоянием
-            от каждого объекта до его "ближайшего соседа".
+            result (ndarray of shape(n_samples,)): массив с отмасштабированным
+            расстоянием от каждого объекта до его "ближайшего соседа".
         """
         tree = cKDTree(x)
         dists, _ = tree.query(x, k=k)
@@ -290,13 +300,15 @@ class ActiveLearning:
 
     def __make_beta(self, modes, ab=10, shift=0.01):
         """
-        Функция принимает моду, величину нерасчётного параметра и смещение параметров.
-        Функция возвращает параметры a и b бета-распределения.
+        Функция принимает моду, величину нерасчётного параметра и смещение
+        параметров. Функция возвращает параметры a и b бета-распределения.
 
         Args:
-            modes (ndarray of shape (n_samples,) or int): Массив с модами распределений или мода.
+            modes (ndarray of shape (n_samples,) or int): Массив с модами
+            распределений или мода.
 
-            ab (int or float), default=10: Нерасчётный параметр. Его повышение уменьшает дисперсию.
+            ab (int or float), default=10: Нерасчётный параметр. Его повышение
+            уменьшает дисперсию.
 
             shift (int or float), default=0.01: Сдвиг параметра.
             Расчётный параметр сдвигается на эту величину, вследствие чего,
@@ -324,23 +336,27 @@ class ActiveLearning:
 
     def __sample_dots(self, dots_inp, scaler, n=5, **kwargs):
         """
-        Функция сэмплирует новые точки путём генерации параметров согласно бета-распределению
-        вокруг имеющихся точек. Функция возвращает насэмпленные точки.
+        Функция сэмплирует новые точки путём генерации параметров согласно
+        бета-распределению вокруг имеющихся точек. Функция возвращает
+        насэмпленные точки.
 
         Args:
-            dots_inp (ndarray of shape (n_samples, n_obj_params)): Массив с объектными параметрами
-            имеющихся точек.
+            dots_inp (ndarray of shape (n_samples, n_obj_params)): Массив с
+            объектными параметрами имеющихся точек.
 
-            scaler (class sklearn.preprocessing.MinMaxScaler): Предобученный MinMaxScaler
-            для нормализации объектных параметров.
-            Необходим поскольку на выходе бета-распределения генерируются значения от 0 до 1.
-            Следовательно изначальные параметры, от которых происходит сэмплирование,
-            нужно привести к диапазону от 0 до 1.
+            scaler (class sklearn.preprocessing.MinMaxScaler): Предобученный
+            MinMaxScaler для нормализации объектных параметров.
+            Необходим поскольку на выходе бета-распределения генерируются
+            значения от 0 до 1. Следовательно изначальные параметры,
+            от которых происходит сэмплирование, нужно привести к диапазону
+            от 0 до 1.
 
-            n (int), default=5: Количество сэмплируемых точек вокруг изначальной точки.
+            n (int), default=5: Количество сэмплируемых точек вокруг
+            изначальной точки.
 
         Returns:
-            result (ndarray of shape(n_samples*n, n_obj_params): Массив с насэмпленными точками.
+            result (ndarray of shape(n_samples*n, n_obj_params): Массив с
+            насэмпленными точками.
         """
         # семплинг делается отдельно по осям в объектном пространстве
         result = np.zeros((len(dots_inp) * n, dots_inp.shape[-1]))
@@ -360,15 +376,17 @@ class ActiveLearning:
         ab_start=80,
     ):
         """
-        Функция обучения классификатора по принципу активного обучения. Выполняется один шаг обучения.
+        Функция обучения классификатора по принципу активного обучения.
+        Выполняется один шаг обучения.
 
         Args:
-            n_for_sample (int), default=100: Количество точек, от которых происходит сэмплирование.
+            n_for_sample (int), default=100: Количество точек, от которых
+            происходит сэмплирование.
 
             n_samples (int), default=5: Количество мэплируемых точек.
 
-            radius (float), default=0.02: Минимальное расстояние до ближайших точек
-            в прореженном массиве.
+            radius (float), default=0.02: Минимальное расстояние до ближайших
+            точек в прореженном массиве.
 
             ab_start (int or float), default=80: Нерасчётный параметр.
             Его повышение уменьшает дисперсию.
@@ -482,20 +500,22 @@ class ActiveLearning:
         Функция обучения классификатора по принципу активного обучения.
 
         Args:
-            model (func): Имитационная модель объекта со встроенным замером, например, провоимости.
+            model (func): Имитационная модель объекта со встроенным замером,
+            например, провоимости.
 
-            bounds_a (list or ndarray of shape (n_obj_params, 2)): Массив с диапазонами объектных
-            параметров для альфа-режимов.
+            bounds_a (list or ndarray of shape (n_obj_params, 2)): Массив с
+            диапазонами объектных параметров для альфа-режимов.
 
-            bounds_b (list or ndarray of shape (n_obj_params, 2)): Массив с диапазонами объектных
-            параметров для бета-режимов.
+            bounds_b (list or ndarray of shape (n_obj_params, 2)): Массив с
+            диапазонами объектных параметров для бета-режимов.
 
-            n_for_sample (int), default=100: Количество точек, от которых происходит сэмплирование.
+            n_for_sample (int), default=100: Количество точек, от которых
+            происходит сэмплирование.
 
             n_samples (int), default=5: Количество мэплируемых точек.
 
-            radius (float), default=0.02: Минимальное расстояние до ближайших точек
-            в прореженном массиве.
+            radius (float), default=0.02: Минимальное расстояние до ближайших
+            точек в прореженном массиве.
 
             ab_start (int or float), default=80: Нерасчётный параметр.
             Его повышение уменьшает дисперсию.
@@ -525,20 +545,23 @@ class ActiveLearning:
 
     def plot_clf(self, clf=None, ranges=None, ax=None, scaler=lambda x: x):
         """
-        Функция отображает области, соответствующие классам (альфа- и бета-режимам).
+        Функция отображает области, соответствующие классам (альфа- и
+        бета-режимам).
 
         Args:
-            clf (class sklearn.linear_model.LogisticRegression): обученный классификатор.
+            clf (class sklearn.linear_model.LogisticRegression): обученный
+            классификатор.
 
-            ranges (list or ndarray of shape(2, 2)), default=[[-0.5,1.5],[-0.5,1.5]]: Список или
-            массив, содержащий граничные значения признаков, в пределах которых будут отображены
-            области классов.
+            ranges (list or ndarray of shape(2, 2)), default=[[-0.5,1.5],[-0.5,1.5]]:
+            Список или массив, содержащий граничные значения признаков, в пределах
+            которых будут отображены области классов.
 
-            ax (class matplotlib.axes.Axes), default=None: Передаётся в случае отображения
-            нескольких изображений в plt.subplots. В ином случае - None.
+            ax (class matplotlib.axes.Axes), default=None: Передаётся в случае
+            отображения нескольких изображений в plt.subplots.
+            В ином случае - None.
 
-            scaler (class sklearn.preprocessing.MinMaxScaler), default=lambdax:x: Задаётся в
-            случае необходимости масштабирования признаков.
+            scaler (class sklearn.preprocessing.MinMaxScaler), default=lambdax:x :
+            Задаётся в случае необходимости масштабирования признаков.
         """
         if clf is None:
             clf = self.clf
@@ -571,10 +594,11 @@ class ActiveLearning:
 
     def create_report(self):
         """
-        Функия создаёт отчёт, содержащий формулы для вычисления polynomial features,
-        значения весов, данные о модели, выражение для разграничивающей кривой,
-        время загрузки данных и время формирования отчёта. Отчёт выполнен в виде строки,
-        которую необходимо записать в файл.
+        Функия создаёт отчёт, содержащий формулы для вычисления
+        polynomial features, значения весов, данные о модели, выражение для
+        разграничивающей кривой, время загрузки данных и время формирования
+        отчёта. Отчёт выполнен в виде строки, которую необходимо записать
+        в файл.
 
         Args:
             filename (str), default="report": Название отчёта.
