@@ -1,6 +1,5 @@
 from datetime import datetime
 
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
 from scipy.spatial import cKDTree
@@ -8,7 +7,6 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import precision_score, recall_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler, PolynomialFeatures, StandardScaler
-from tqdm import tqdm
 
 
 class ActiveLearning:
@@ -90,7 +88,7 @@ class ActiveLearning:
             v_b = np.array([model(vec_params)[0] for vec_params in x_b])
             self.scaler_model.fit(v_b)
             self.model = lambda x: self.scaler_model.transform(
-                np.array([model(vec_params)[0] for vec_params in x])
+                np.array([self.model_of_object(vec_params)[0] for vec_params in x])
             )
 
         v_a = self.model(x_a)
@@ -528,7 +526,7 @@ class ActiveLearning:
 
         self.initialize(model, bounds_a, bounds_b)
 
-        for _ in tqdm(range(maxiter)):
+        for _ in range(maxiter):
             self.step(
                 n_for_sample=n_for_sample,
                 n_samples=n_samples,
@@ -542,55 +540,6 @@ class ActiveLearning:
 
         self.start_time = start_time
         self.end_time = end_time
-
-    def plot_clf(self, clf=None, ranges=None, ax=None, scaler=lambda x: x):
-        """
-        Функция отображает области, соответствующие классам (альфа- и
-        бета-режимам).
-
-        Args:
-            clf (class sklearn.linear_model.LogisticRegression): обученный
-            классификатор.
-
-            ranges (list or ndarray of shape(2, 2)), default=[[-0.5,1.5],[-0.5,1.5]]:
-            Список или массив, содержащий граничные значения признаков, в пределах
-            которых будут отображены области классов.
-
-            ax (class matplotlib.axes.Axes), default=None: Передаётся в случае
-            отображения нескольких изображений в plt.subplots.
-            В ином случае - None.
-
-            scaler (class sklearn.preprocessing.MinMaxScaler), default=lambdax:x :
-            Задаётся в случае необходимости масштабирования признаков.
-        """
-        if clf is None:
-            clf = self.clf
-
-        v_a = self.v_a
-        v_b = self.v_b
-
-        x_min, x_max = v_b[:, 0].min() - 0.5, v_b[:, 0].max() + 0.5
-        y_min, y_max = v_b[:, 1].min() - 0.5, v_b[:, 1].max() + 0.5
-
-        lsx1 = np.linspace(x_min, x_max, 400)
-        lsx2 = np.linspace(y_min, y_max, 400)
-        xx0, xx1 = np.meshgrid(lsx1, lsx2)
-        yy = clf.predict(np.c_[xx0.flatten(), xx1.flatten()]).reshape(xx0.shape)
-
-        x = scaler(np.c_[np.c_[xx0.flatten(), xx1.flatten()]])
-        xx0, xx1 = [i.reshape(yy.shape) for i in x.T]
-
-        if ax == None:
-            plt.contourf(xx0, xx1, yy, zorder=10, alpha=0.3, cmap="bwr_r")
-        else:
-            ax.contourf(xx0, xx1, yy, zorder=10, alpha=0.3, cmap="bwr_r")
-
-        plt.scatter(*v_b.T, edgecolor="k")
-        plt.scatter(*v_a.T, edgecolor="k")
-        plt.grid()
-        plt.xlim(x_min, x_max)
-        plt.ylim(y_min, y_max)
-        plt.show()
 
     def create_report(self):
         """

@@ -4,7 +4,5 @@ services:
     build: .\
     container_name: ymnik_app
     ports: [ "8501:8501" ]
-    volumes:
-      - .\:/usr/app/
     environment:
       - TZ=Europe/Moscow
