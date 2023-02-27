@@ -669,3 +669,20 @@ class ActiveLearning:
         report += "Но для обеспечения селективности необходимо отнести этот режим к бета-режимам.\n"
 
         return report
+
+
+if __name__ == "__main__":
+    import sys
+    import numpy as np
+
+    exec(open(sys.argv[1]).read())  # filename for model
+    inp_bounds = np.loadtxt(sys.argv[2])  # filename for parameters
+    inp_bounds_a = inp_bounds[: int(len(inp_bounds) / 2)]
+    inp_bounds_b = inp_bounds[int(len(inp_bounds) / 2) :]
+
+    clf = ActiveLearning()
+    clf.initialize(model=model, bounds_a=inp_bounds_a, bounds_b=inp_bounds_b)
+    clf.learning(model=model, bounds_a=inp_bounds_a, bounds_b=inp_bounds_b, maxiter=200)
+
+    with open("report.txt", "w", encoding="utf-8") as f:
+        f.write(clf.create_report())
