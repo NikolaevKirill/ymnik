@@ -47,6 +47,7 @@ maxiter = 400  # number of iterations
 window_shape = 10  # shape mooving window for stop ctiterion
 threshold = 0.5  # threshold of difference resistance of alpha-modes
 # for stop learning in percentage
+retention_period = 5 * 60  # retention period (seconds)
 
 with header:
     st.markdown(
@@ -230,16 +231,29 @@ with body:
             st.button(
                 "Остановить расчёт", disabled=st.session_state.success_stop_criterion
             )
-
+            time_s = datetime.now()
             for iteration in range(int(maxiter / 2)):
                 iter_learning = iteration / maxiter
                 my_bar.progress(iter_learning)
                 clf.step()
+                # retention
+                time_c = datetime.now()
+                if (time_c - time_s).seconds > retention_period:
+                    time_s = time_c
+                    with open(f"log_reports/{name_of_model}.txt", "w") as text_file:
+                        text_file.write(clf.create_report())
 
             for iteration in range(int(maxiter / 2), maxiter):
                 iter_learning = iteration / maxiter
                 my_bar.progress(iter_learning)
                 clf.step()
+                # retention
+                time_c = datetime.now()
+                if (time_c - time_s).seconds > retention_period:
+                    time_s = time_c
+                    with open(f"log_reports/{name_of_model}.txt", "w") as text_file:
+                        text_file.write(clf.create_report())
+
                 if (iteration - maxiter / 2) >= window_shape:
                     s_r = np.array(clf.s_r)[-(window_shape + 1) :]
                     relative_diff = np.abs(np.diff(s_r)) / s_r[:-1] * 100
